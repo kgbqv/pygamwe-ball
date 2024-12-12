@@ -3,16 +3,20 @@ import random
 import sys
 import os
 
+from head_pose import *
+
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
 CODE = [pygame.K_UP, pygame.K_UP, pygame.K_DOWN, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_b, pygame.K_a]
 
 rick_frame_count = -1
+USE_FACE = True
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+GREEN = (0, 255, 0)
 RED = (255, 0, 0)
 BLUE = (0, 0, 255)
 GRAY = (200, 200, 200)
@@ -67,18 +71,34 @@ def draw_screen(balls):
         rick_frame_count += 1
         if rick_frame_count == 125:
             rick_frame_count = -1
-
+    if USE_FACE:
+        frame = get_head_pose()
+        frame_surface = pygame.surfarray.make_surface(np.rot90(frame))
+        #scale to 100x50
+        frame_surface = pygame.transform.scale(frame_surface, (100, 50))
+        screen.blit(frame_surface, (675, 75))
+    button_color = GREEN if USE_FACE else RED
+    pygame.draw.rect(screen, button_color, (10, 10, 100, 50))
+    text = font.render('USE_FACE' if USE_FACE else 'NO_FACE', True, WHITE)
+    screen.blit(text, (20, 25))
     
     pygame.display.flip()
 
 def move_basket(keys):
     global speed
     global accel
-    if not (BROKEN or random.randint(0,100) < 5):
-        if keys[pygame.K_LEFT] and basket.left > 0:
-            speed -= accel
-        if keys[pygame.K_RIGHT] and basket.right < SCREEN_WIDTH:
-            speed += accel
+    if not USE_FACE:
+        if not (BROKEN or random.randint(0,100) < 5):
+            if keys[pygame.K_LEFT] and basket.left > 0:
+                speed -= accel
+            if keys[pygame.K_RIGHT] and basket.right < SCREEN_WIDTH:
+                speed += accel
+    else:
+        if not (BROKEN or random.randint(0,100) < 5):
+            if get_face_result() <-20 and basket.left > 0:
+                speed -= accel * -get_face_result()/10
+            if get_face_result()>20 and basket.right < SCREEN_WIDTH:
+                speed += accel * get_face_result()/10
 
 def update_ball(balls):
     global score
@@ -209,7 +229,6 @@ def main():
 
     running = True
     while running:
-        print(index)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -217,6 +236,9 @@ def main():
                 if button_rect.collidepoint(event.pos):
                     running = False
             elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_f:
+                    global USE_FACE
+                    USE_FACE = not USE_FACE
                 if event.key == CODE[index]:
                     code.append(event.key)
                     index += 1
