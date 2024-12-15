@@ -10,6 +10,7 @@ dname = os.path.dirname(abspath)
 os.chdir(dname)
 CODE = [pygame.K_UP, pygame.K_UP, pygame.K_DOWN, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_b, pygame.K_a]
 
+running = False
 rick_frame_count = -1
 USE_FACE = True
 SCREEN_WIDTH = 800
@@ -37,10 +38,50 @@ decel = 0.5
 counter = 0
 BROKEN = False
 pygame.mixer.init()
-pygame.mixer.music.load("audio.mp3")
+pygame.mixer.music.load("audio1.mp3")
 pygame.mixer.music.play(-1)
 
+def play_music():
+    pygame.mixer.music.stop()  # Stop any currently playing music
+    pygame.mixer.music.load(audio)  # Load the new music file
+    pygame.mixer.music.play(-1 if True else 0)  # Play the music in a loop
 
+def draw_main_menu():
+    screen.fill(WHITE)
+    title_font = pygame.font.SysFont('arial', 40)
+    option_font = pygame.font.SysFont('arial', 30)
+
+    title_text = title_font.render("Main Menu", True, BLACK)
+    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 100))
+
+    start_text = option_font.render("1. Start Game", True, BLACK)
+    options_text = option_font.render("2. Options", True, BLACK)
+    quit_text = option_font.render("3. Quit", True, BLACK)
+
+    screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, 200))
+    screen.blit(options_text, (SCREEN_WIDTH // 2 - options_text.get_width() // 2, 250))
+    screen.blit(quit_text, (SCREEN_WIDTH // 2 - quit_text.get_width() // 2, 300))
+
+    pygame.display.flip()
+
+def draw_options_menu():
+    screen.fill(WHITE)
+    title_font = pygame.font.SysFont('arial', 40)
+    option_font = pygame.font.SysFont('arial', 30)
+
+    title_text = title_font.render("Options", True, BLACK)
+    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 100))
+
+    volume_text = option_font.render(f"Volume: {int(volume * 100)}%", True, BLACK)
+    controls_text = option_font.render("Controls: Arrow keys to move, can also move with looking left or right", True, BLACK)
+    back_text = option_font.render("Press B to go back", True, BLACK)
+
+    screen.blit(volume_text, (SCREEN_WIDTH // 2 - volume_text.get_width() // 2, 200))
+    screen.blit(controls_text, (SCREEN_WIDTH // 2 - controls_text.get_width() // 2, 250))
+    screen.blit(back_text, (SCREEN_WIDTH // 2 - back_text.get_width() // 2, 300))
+
+    pygame.display.flip()
+    
 def draw_screen(balls):
     global counter
     global rick_frame_count
@@ -198,17 +239,6 @@ def reset_ball(ball):
             except:
                 pass
 
-def show_start_screen():
-    screen.fill(WHITE)
-    title_font = pygame.font.SysFont('arial', 40)
-    title_text = title_font.render("Chào mừng đến với Game Hứng Bóng!", True, BLACK)
-    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, SCREEN_HEIGHT // 2 - 100))
-
-    instruction_font = pygame.font.SysFont('arial', 20)
-    instruction_text = instruction_font.render("Nhấn phím bất kỳ để bắt đầu...", True, BLACK)
-    screen.blit(instruction_text, (SCREEN_WIDTH // 2 - instruction_text.get_width() // 2, SCREEN_HEIGHT // 2))
-
-    pygame.display.flip()
 code = []
 index = 0
 def main():
@@ -225,9 +255,45 @@ def main():
     global code
     global index
     global rick_frame_count
-    show_start_screen()
 
-    running = True
+    while menu_running:
+    draw_main_menu()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            menu_running = False
+            pygame.quit()
+            sys.exit()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_1:
+                running = True
+                menu_running = False
+            elif event.key == pygame.K_2:
+                options_running = True
+                menu_running = False
+            elif event.key == pygame.K_3:
+                menu_running = False
+                pygame.quit()
+                sys.exit()
+                
+    while options_running:
+    draw_options_menu()
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            options_running = False
+            pygame.quit()
+            sys.exit()
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP:
+                volume = min(1.0, volume + 0.1)
+                pygame.mixer.music.set_volume(volume)
+            elif event.key == pygame.K_DOWN:
+                volume = max(0.0, volume - 0.1)
+                pygame.mixer.music.set_volume(volume)
+            elif event.key == pygame.K_b:
+                options_running = False
+                menu_running = True
+                
+
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -251,6 +317,7 @@ def main():
                     index = 0
 
         keys = pygame.key.get_pressed()
+        play_music()
         if score == 100 and rick_frame_count == -1:
             rick_frame_count = 1
         global speed
@@ -329,7 +396,7 @@ power_type = None
 # 1: teleport
 # 2: duplicate
 
-score = 65
+score = 0
 
 font = pygame.font.SysFont('arial', 24)
 
