@@ -1,0 +1,8 @@
+Features
+- a menu
+- audio
+- movement via face tracking
+- all sorts of gameplay-related features, listed in the help menu
+- secret reward when you get 100 points (just try)
+
+In classic ctf manner, we've hidden a secret feature inside the game. Can you find it ? (hint: only real gamers will know)
