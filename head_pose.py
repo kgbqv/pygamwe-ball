@@ -13,7 +13,7 @@ class HeadPoseDetector:
     def get_webcam(self):
         ret, frame = self.cap.read()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        frame = cv2.resize(frame, (0, 0), fx=0.3, fy=0.3)
+        frame = cv2.resize(frame, (0, 0), fx=0.2, fy=0.2)
         return frame
 
     def get_head_pose(self):
@@ -72,7 +72,10 @@ class HeadPoseDetector:
     def get_face_result(self):
         return self.head_pose[1]
     def change_webcam(self):
-        self.instance+=1
+        try: 
+            self.instance+=1
+        except:
+            self.instance = 0
         self.cap = cv2.VideoCapture(self.instance)
     def __del__(self):
         self.cap.release()

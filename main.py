@@ -6,12 +6,26 @@ import math
 
 from head_pose import *
 
+import time
+import random
+
+
+previous_time = time.time()
+
+def track_fps():
+    global previous_time
+    current_time = time.time()
+    delta_time = current_time - previous_time
+    previous_time = current_time
+    fps = 1.0 / delta_time if delta_time > 0 else 0
+    return fps
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
 CODE = [pygame.K_UP, pygame.K_UP, pygame.K_DOWN, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_b, pygame.K_a]
 
 running = False
+prev_result = 0
 rick_frame_count = -1
 USE_FACE = True
 SCREEN_WIDTH = 800
@@ -34,15 +48,21 @@ BROKEN_TIMING = -1
 BREAK_X = 0
 BREAK_WIDTH = 0
 FRAME_COUNTER = 0
+stats = {}
 speed = 0
 accel = 0.6
 decel = 0.5
 counter = 0
 volume = 1.0
 BROKEN = False
+pygame.mixer.pre_init(44100, -16, 2, 2048)
 pygame.mixer.init()
-pygame.mixer.music.load("audio.mp3")
+pygame.mixer.quit()
+pygame.mixer.init()
+pygame.mixer.music.load("menu.mp3")
 pygame.mixer.music.play(-1)
+sound_files = [f"effect/eff-{i:02d}.wav" for i in range(1, 7)]
+sounds = [pygame.mixer.Sound(file) for file in sound_files]
 
 def draw_main_menu():
     screen.fill(WHITE)
@@ -55,15 +75,68 @@ def draw_main_menu():
     start_text = option_font.render("1. Start Game", True, BLACK)
     options_text = option_font.render("2. Options", True, BLACK)
     help_text = option_font.render("3. Help", True, BLACK)
-    quit_text = option_font.render("4. Quit", True, BLACK)
+    stat_text = option_font.render("4. Statistics", True, BLACK)
+    quit_text = option_font.render("5. Quit", True, BLACK)
 
     screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, 200))
     screen.blit(options_text, (SCREEN_WIDTH // 2 - options_text.get_width() // 2, 250))
     screen.blit(help_text, (SCREEN_WIDTH // 2 - help_text.get_width() // 2, 300))
-    screen.blit(quit_text, (SCREEN_WIDTH // 2 - quit_text.get_width() // 2, 350))
+    screen.blit(stat_text, (SCREEN_WIDTH // 2 - quit_text.get_width() // 2, 350))
+    screen.blit(quit_text, (SCREEN_WIDTH // 2 - quit_text.get_width() // 2, 400))
 
     pygame.display.flip()
+def update_stats():
+    global stats
+    global score
+    global stun_count
+    stats["last_score"] = str(score)
+    stats["high_score"] = str(max(score, int(stats.get("high_score", "0"))))
+    stats["total_score"] = str(int(stats.get("total_score", "0")) + score)
+    stats["stun_count"] = str(int(stats.get("stun_count", "0")) + stun_count)
+    stats["hist_score"] = str(eval(stats.get("hist_score", "[]")) + [score])
 
+    with open("statistics.txt", "w") as f:
+        for key, value in stats.items():
+            f.write(f"{key} {value}\n")
+    score = 0
+def draw_stats_menu():
+    global stats
+    screen.fill(WHITE)
+    title_font = pygame.font.SysFont('arial', 40)
+    option_font = pygame.font.SysFont('arial', 30)
+
+    title_text = title_font.render("Statistics", True, BLACK)
+    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
+
+    stats_text = option_font.render("1. Last Score: " + stats.get("last_score", "0"), True, BLACK)
+    stats1_text = option_font.render("2. Best Score: " + stats.get("high_score", "0"), True, BLACK)
+    stats2_text = option_font.render("3. Total Score: " + stats.get("total_score", "0"), True, BLACK)
+    stats3_text = option_font.render("4. Total Stuns: " + stats.get("stun_count", "0"), True, BLACK)
+    stats4_text = option_font.render("You have found the secret!" if stats.get("secret") != "0" else "You haven't found the secret", True, BLACK)
+    
+    
+    if False:
+        hist = eval(stats.get("hist_score"))
+        hist = [int(x) for x in hist]
+        bar_width = (SCREEN_WIDTH-100) // len(hist)
+        x = 0
+        y = SCREEN_HEIGHT - int(stats.get("high_score"))
+        bar_color = BLUE
+        for i, score in enumerate(hist):
+            bar_height = int((score / int(stats.get("high_score"))) *int(stats.get("high_score")))
+            bar_x = 50 + x + i * bar_width
+            bar_y = y + (int(stats.get("high_score")) - bar_height)
+            pygame.draw.rect(screen, bar_color, (bar_x, bar_y, bar_width, bar_height))
+
+    back_text = option_font.render("Press B to go back", True, BLACK)
+
+    screen.blit(stats_text, (SCREEN_WIDTH // 2 - stats_text.get_width() // 2, 100))
+    screen.blit(stats1_text, (SCREEN_WIDTH // 2 - stats1_text.get_width() // 2, 150))
+    screen.blit(stats2_text, (SCREEN_WIDTH // 2 - stats2_text.get_width() // 2, 200))
+    screen.blit(stats3_text, (SCREEN_WIDTH // 2 - stats3_text.get_width() // 2, 250))
+    screen.blit(stats4_text, (SCREEN_WIDTH // 2 - stats4_text.get_width() // 2, 300))
+    screen.blit(back_text, (SCREEN_WIDTH // 2 - back_text.get_width() // 2, 350))
+    pygame.display.flip()
 def draw_options_menu():
     screen.fill(WHITE)
     title_font = pygame.font.SysFont('arial', 40)
@@ -156,6 +229,9 @@ def draw_screen(balls):
     pygame.draw.rect(screen, button_color, (10, 90, 140, 50))
     text = font.render('USE_FACE' if USE_FACE else 'NO_FACE', True, WHITE)
     screen.blit(text, (20, 95))
+    fps = track_fps()
+    fps_text = font.render(f"FPS: {int(fps)}", True, BLACK)
+    screen.blit(fps_text, (10, SCREEN_HEIGHT - 30))
     if rick_frame_count > -1:
         screen.fill(BLACK)
         rick_frame = pygame.image.load(f"FRAMES/converted/ffmpeg_{rick_frame_count}.png")
@@ -174,6 +250,7 @@ def draw_screen(balls):
 def move_basket(keys):
     global speed
     global accel
+    global prev_result
     if not USE_FACE:
         if not (BROKEN or random.randint(0,100) < 5):
             if keys[pygame.K_LEFT] and basket.left > 0:
@@ -181,11 +258,13 @@ def move_basket(keys):
             if keys[pygame.K_RIGHT] and basket.right < SCREEN_WIDTH:
                 speed += accel
     else:
+        if FRAME_COUNTER % 5 == 0:
+            prev_result = head_pose.get_face_result()
         if not (BROKEN or random.randint(0,100) < 5):
-            if head_pose.get_face_result() <-20 and basket.left > 0:
-                speed -= accel * -head_pose.get_face_result()/10
-            if head_pose.get_face_result()>20 and basket.right < SCREEN_WIDTH:
-                speed += accel * head_pose.get_face_result()/10
+            if prev_result < -20 and basket.left > 0:
+                speed -= accel * -prev_result/10
+            if prev_result > 20 and basket.right < SCREEN_WIDTH:
+                speed += accel * prev_result/10
 
 def update_ball(balls):
     global score
@@ -204,6 +283,8 @@ def update_ball(balls):
         if ball["y"] > SCREEN_HEIGHT:
             reset_ball(ball)
         if basket.collidepoint(ball["x"], ball["y"]) and not BROKEN:
+            sound = random.choice(sounds)
+            sound.play()
             if ball["abnormal"]:
                 score += 3
             else:
@@ -304,35 +385,58 @@ def main():
     global code
     global index
     global rick_frame_count
+    global stats
+    global stun_count
     global FRAME_COUNTER
     menu_running = True
     options_running = False
     help_running = False
     running = False
+    stats_running = False
     global volume
-
+    with open("statistics.txt", "r") as f:
+        lines = f.readlines()
+        stats = {line.split()[0]: ' '.join(line.split()[1:]) for line in lines}
     while True:
         if menu_running:
             draw_main_menu()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     menu_running = False
+                    update_stats()
                     pygame.quit()
                     sys.exit()
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_1:
                         running = True
                         menu_running = False
+                        pygame.mixer.music.stop()
+                        pygame.mixer.music.load("game.mp3")
+                        pygame.mixer.music.play(-1)
                     elif event.key == pygame.K_2:
                         options_running = True
                         menu_running = False
                     elif event.key == pygame.K_3:
                         help_running = True
                         menu_running = False
-                    elif event.key == pygame.K_4:
+                    elif event.key == pygame.K_5:
                         menu_running = False
                         pygame.quit()
                         sys.exit()
+                    elif event.key == pygame.K_4:
+                        stats_running = True
+                        menu_running = False
+        if stats_running:
+            draw_stats_menu()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    stats_running = False
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_b:
+                        stats_running = False
+                        menu_running = True
                     
         if options_running:
             draw_options_menu()
@@ -374,6 +478,7 @@ def main():
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     if button_rect.collidepoint(event.pos):
                         running = False
+                        update_stats()
                         pygame.quit()
                         sys.exit()
                 elif event.type == pygame.KEYDOWN:
@@ -386,13 +491,18 @@ def main():
                         if code == CODE:
                             index = 0
                             print('Bingo!')
-                            score = 100000000000
+                            score = 1000
+                            stats["secret"] = "1"
                     else:
                         code = []
                         index = 0
                     if event.key == pygame.K_m:
                         running = False
                         menu_running = True
+                        pygame.mixer.music.stop()
+                        pygame.mixer.music.load("menu.mp3")
+                        pygame.mixer.music.play(-1)
+                        update_stats()
             keys = pygame.key.get_pressed()
             if score == 100 and rick_frame_count == -1:
                 rick_frame_count = 1
@@ -437,6 +547,7 @@ def main():
                     pygame.draw.rect(screen, RED, (BREAK_X, 0, BREAK_WIDTH, SCREEN_HEIGHT))
                     if basket.colliderect(pygame.Rect(BREAK_X, 0, BREAK_WIDTH, SCREEN_HEIGHT)):
                         BROKEN = True
+                        stun_count += 1
                         BROKEN_TIMING = FPS*random.randint(3,8)
                 if BROKEN_TIMING == 0:
                     BROKEN = False
@@ -470,6 +581,7 @@ power_type = None
 # 1: teleport
 # 2: duplicate
 score = 0
+stun_count = 0
 
 font = pygame.font.SysFont('arial', 24)
 
