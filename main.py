@@ -3,14 +3,29 @@ import random
 import sys
 import os
 import math
-
-from head_pose import *
+import pygame.gfxdraw
 
 import time
 import random
 
 
 previous_time = time.time()
+internal_score = 0
+def get_rank(curr_heat):
+    if curr_heat > 32:
+        return "SSS"
+    elif curr_heat > 26:
+        return "SS"
+    elif curr_heat > 16:
+        return "S"
+    elif curr_heat > 12:
+        return "A"
+    elif curr_heat > 8:
+        return "B"
+    elif curr_heat > 5:
+        return "C"
+    else:
+        return "D"
 
 def track_fps():
     global previous_time
@@ -23,7 +38,18 @@ abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
 CODE = [pygame.K_UP, pygame.K_UP, pygame.K_DOWN, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_b, pygame.K_a]
-
+def draw_rotated_rect(surface, color, center, size, angle):
+    half_width, half_height = size[0] / 2, size[1] / 2
+    angle_rad = math.radians(angle)
+    cos_angle = math.cos(angle_rad)
+    sin_angle = math.sin(angle_rad)
+    points = [
+        (center[0] + half_width * cos_angle - half_height * sin_angle, center[1] + half_width * sin_angle + half_height * cos_angle),
+        (center[0] - half_width * cos_angle - half_height * sin_angle, center[1] - half_width * sin_angle + half_height * cos_angle),
+        (center[0] - half_width * cos_angle + half_height * sin_angle, center[1] - half_width * sin_angle - half_height * cos_angle),
+        (center[0] + half_width * cos_angle + half_height * sin_angle, center[1] + half_width * sin_angle - half_height * cos_angle)
+    ]
+    pygame.gfxdraw.filled_polygon(surface, points, color)
 running = False
 prev_result = 0
 rick_frame_count = -1
@@ -48,13 +74,17 @@ BROKEN_TIMING = -1
 BREAK_X = 0
 BREAK_WIDTH = 0
 FRAME_COUNTER = 0
+minimal = True
 stats = {}
 speed = 0
 accel = 0.6
 decel = 0.5
 counter = 0
-volume = 1.0
+powerop_list = []
+volume = 0
 BROKEN = False
+MAGNETIC_CATCH = False
+DECREASE_STUN = 0
 pygame.mixer.pre_init(44100, -16, 2, 2048)
 pygame.mixer.init()
 pygame.mixer.quit()
@@ -63,6 +93,18 @@ pygame.mixer.music.load("menu.mp3")
 pygame.mixer.music.play(-1)
 sound_files = [f"effect/eff-{i:02d}.wav" for i in range(1, 7)]
 sounds = [pygame.mixer.Sound(file) for file in sound_files]
+curr_heat = 40
+if not minimal:
+    from head_pose import *
+class bullet:
+    def __init__(self, x, y, speed, direction):
+        self.x = x
+        self.y = y
+        self.speed = speed
+        self.direction = direction
+    def update(self):
+        self.x += self.speed * math.sin(math.radians(self.direction))
+        self.y -= self.speed * math.cos(math.radians(self.direction))
 
 def draw_main_menu():
     screen.fill(WHITE)
@@ -81,7 +123,7 @@ def draw_main_menu():
     screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, 200))
     screen.blit(options_text, (SCREEN_WIDTH // 2 - options_text.get_width() // 2, 250))
     screen.blit(help_text, (SCREEN_WIDTH // 2 - help_text.get_width() // 2, 300))
-    screen.blit(stat_text, (SCREEN_WIDTH // 2 - quit_text.get_width() // 2, 350))
+    screen.blit(stat_text, (SCREEN_WIDTH // 2 - stat_text.get_width() // 2, 350))
     screen.blit(quit_text, (SCREEN_WIDTH // 2 - quit_text.get_width() // 2, 400))
 
     pygame.display.flip()
@@ -99,6 +141,7 @@ def update_stats():
         for key, value in stats.items():
             f.write(f"{key} {value}\n")
     score = 0
+    internal_score = 0
 def draw_stats_menu():
     global stats
     screen.fill(WHITE)
@@ -150,7 +193,9 @@ def draw_options_menu():
     controls2_text = option_font.render("F to toggle face tracking, look left/right to move.", True, BLACK)
     controls3_text = option_font.render("M to return to the main menu", True, BLACK)
     controls4_text = option_font.render("Up/Down to adjust volume (only in options)", True, BLACK)
-    controls5_text = option_font.render("Q to change webcam (also only here)", True, BLACK)
+    if not minimal:
+        controls5_text = option_font.render("Q to change webcam (also only here)", True, BLACK)
+    controls6_text = option_font.render("Space to shoot while in boss mode", True, BLACK)
     back_text = option_font.render("Press B to go back", True, BLACK)
 
     screen.blit(volume_text, (SCREEN_WIDTH // 2 - volume_text.get_width() // 2, 100))
@@ -158,12 +203,15 @@ def draw_options_menu():
     screen.blit(controls2_text, (SCREEN_WIDTH // 2 - controls2_text.get_width() // 2, 200))
     screen.blit(controls3_text, (SCREEN_WIDTH // 2 - controls3_text.get_width() // 2, 250))
     screen.blit(controls4_text, (SCREEN_WIDTH // 2 - controls4_text.get_width() // 2, 300))
-    screen.blit(controls5_text, (SCREEN_WIDTH // 2 - controls5_text.get_width() // 2, 350))
-    frame = head_pose.get_head_pose()
-    frame_surface = pygame.surfarray.make_surface(np.rot90(frame))
-    frame_surface = pygame.transform.scale(frame_surface, (100, 50))
-    screen.blit(frame_surface, (SCREEN_WIDTH//2 -50, 400))
-    screen.blit(back_text, (SCREEN_WIDTH // 2 - back_text.get_width() // 2, 450))
+    if not minimal:
+        screen.blit(controls5_text, (SCREEN_WIDTH // 2 - controls5_text.get_width() // 2, 350))
+    screen.blit(controls6_text, (SCREEN_WIDTH // 2 - controls6_text.get_width() // 2, 400))
+    if not minimal:
+        frame = head_pose.get_head_pose()
+        frame_surface = pygame.surfarray.make_surface(np.rot90(frame))
+        frame_surface = pygame.transform.scale(frame_surface, (100, 50))
+        screen.blit(frame_surface, (SCREEN_WIDTH//2 -50, 450))
+    screen.blit(back_text, (SCREEN_WIDTH // 2 - back_text.get_width() // 2, 500))
 
     pygame.display.flip()
 def draw_help_menu():
@@ -181,7 +229,8 @@ def draw_help_menu():
     help4_text = option_font.render("- Power zones spawn randomly", True, BLACK)
     help5_text = option_font.render("- Power zones have random functionalities,", True, BLACK)
     help6_text = option_font.render("ranging from speeding up the balls to duplicating them", True, BLACK)
-    help7_text = option_font.render("Next, head to the options menu", True, BLACK)
+    help7_text = option_font.render("- You can use space to shoot bullets", True, BLACK)
+    help8_text = option_font.render("Next, head to the options menu", True, BLACK)
     back_text = option_font.render("Press B to go back", True, BLACK)
 
     screen.blit(help_text, (SCREEN_WIDTH // 2 - help_text.get_width() // 2, 100))
@@ -192,18 +241,23 @@ def draw_help_menu():
     screen.blit(help5_text, (SCREEN_WIDTH // 2 - help5_text.get_width() // 2, 350))
     screen.blit(help6_text, (SCREEN_WIDTH // 2 - help6_text.get_width() // 2, 400))
     screen.blit(help7_text, (SCREEN_WIDTH // 2 - help7_text.get_width() // 2, 450))
-    screen.blit(back_text, (SCREEN_WIDTH // 2 - back_text.get_width() // 2, 500))
+    screen.blit(help8_text, (SCREEN_WIDTH // 2 - help8_text.get_width() // 2, 500))
+    screen.blit(back_text, (SCREEN_WIDTH // 2 - back_text.get_width() // 2, 550))
 
     pygame.display.flip()
 
 def draw_screen(balls):
     global counter
+    global speed
     global rick_frame_count
+    global curr_heat
     screen.fill(WHITE)
+    global font
+    basket_dir = speed
     if BROKEN:
-        pygame.draw.rect(screen, RED, basket)
+        draw_rotated_rect(screen, RED, basket.center, (BASKET_WIDTH, BASKET_HEIGHT), basket_dir)
     else:
-        pygame.draw.rect(screen, BLUE, basket)
+        draw_rotated_rect(screen, BLUE, basket.center, (BASKET_WIDTH, BASKET_HEIGHT), basket_dir)
     for ball in balls:
         pygame.draw.circle(screen, RED, (ball["x"], ball["y"]), BALL_RADIUS)
     score_text = font.render(f"Điểm: {score}", True, BLACK)
@@ -217,41 +271,58 @@ def draw_screen(balls):
     pygame.draw.polygon(screen, BLACK, [(arrow_end[0] - 10*direc, arrow_end[1] - 10), (arrow_end[0] - 10*direc, arrow_end[1] + 10), (arrow_end[0], arrow_end[1])])
     gio_text = font.render("Gió", True, BLACK)
     screen.blit(gio_text, (35 - gio_text.get_width() // 2, 45))
+    heat = get_rank(curr_heat)
+    heat_text = font.render(f"Rank:", True, (44,44,44))
+    rank_font = pygame.font.SysFont('arial', 72)
+    rank_font.set_bold(True)
+    rank_color = (255, 215, 0) if heat == "SSS" else (255, 0, 0) if heat == "SS" else (205, 127, 50) if heat == "S" else (0, 128, 0) if heat == "A" else (0, 0, 255) if heat == "B" else (255, 0, 255) if heat == "C" else (128, 0, 128)
+    rank_text = rank_font.render(heat, True, rank_color)
+    shadow_text = rank_font.render(heat, True, (200,200,200))
+    shake = random.randint(-curr_heat//6,curr_heat//6)
+    screen.blit(shadow_text, (SCREEN_WIDTH - rank_text.get_width()+shake, SCREEN_HEIGHT - rank_text.get_height()+shake))
+    screen.blit(heat_text, (SCREEN_WIDTH - heat_text.get_width() - rank_text.get_width()-5, SCREEN_HEIGHT - heat_text.get_height()-5))
+    screen.blit(rank_text, (SCREEN_WIDTH - rank_text.get_width()-5+shake, SCREEN_HEIGHT - rank_text.get_height()-5+shake))
     if power_field:
         pygame.draw.rect(screen, [(204, 204, 0), (0, 153, 0), (0, 153, 153), (153, 0, 153)][power_type], power_field)
     
-    if USE_FACE:
+    if USE_FACE and not minimal:
         frame = head_pose.get_head_pose()
         frame_surface = pygame.surfarray.make_surface(np.rot90(frame))
         frame_surface = pygame.transform.scale(frame_surface, (100, 50))
         screen.blit(frame_surface, (675, 75))
-    button_color = GREEN if USE_FACE else RED
+    button_color = GREEN if USE_FACE and not minimal else RED
     pygame.draw.rect(screen, button_color, (10, 90, 140, 50))
     text = font.render('USE_FACE' if USE_FACE else 'NO_FACE', True, WHITE)
     screen.blit(text, (20, 95))
     fps = track_fps()
     fps_text = font.render(f"FPS: {int(fps)}", True, BLACK)
     screen.blit(fps_text, (10, SCREEN_HEIGHT - 30))
-    if rick_frame_count > -1:
+    if rick_frame_count > -1 and not minimal:
         screen.fill(BLACK)
         rick_frame = pygame.image.load(f"FRAMES/converted/ffmpeg_{rick_frame_count}.png")
         rick_frame = pygame.transform.scale(rick_frame, (SCREEN_WIDTH, SCREEN_HEIGHT/1.5))
         screen.blit(rick_frame, (0,0+SCREEN_HEIGHT/6))
         rick_frame_count += 1
-        print(rick_frame_count)
+        
         if rick_frame_count == 125:
-            print(FRAME_COUNTER)
             if FRAME_COUNTER %7==0:
                 rick_frame_count = -1
             else:
                 rick_frame_count = 1
+        fontt = pygame.font.SysFont('arial', 40)
+        text = fontt.render('100 POINTS', True, WHITE)
+        screen.blit(text, (SCREEN_WIDTH//2 - text.get_width()//2, SCREEN_HEIGHT//2 - text.get_height()//2))
+    #render powerups
+    for i, power in enumerate(powerop_list):
+        text = font.render(power, True, BLACK)
+        screen.blit(text, (10, SCREEN_HEIGHT - 50 - (i+1)*30))
     pygame.display.flip()
 
 def move_basket(keys):
     global speed
     global accel
     global prev_result
-    if not USE_FACE:
+    if not USE_FACE or minimal:
         if not (BROKEN or random.randint(0,100) < 5):
             if keys[pygame.K_LEFT] and basket.left > 0:
                 speed -= accel
@@ -265,15 +336,32 @@ def move_basket(keys):
                 speed -= accel * -prev_result/10
             if prev_result > 20 and basket.right < SCREEN_WIDTH:
                 speed += accel * prev_result/10
-
+    if basket.left <= 0:
+        speed = max(0, speed)
+        basket.left = 0
+    if basket.right >= SCREEN_WIDTH:
+        speed = min(0, speed)
+        basket.right = SCREEN_WIDTH
 def update_ball(balls):
     global score
+    global internal_score
+    global MAGNETIC_CATCH
     global counter
     global power_field
     global power_type
     for ball in balls:
         ball["y"] += ball["speed"]
         ball["x"] += ball["direction"]/360 * ball["speed"]
+        if MAGNETIC_CATCH:
+            dir_y = basket.centery - ball["y"] + basket.height//2
+            if dir_y == 0:
+                dir_y = 1
+            dir_x = basket.centerx - ball["x"]
+            q = dir_x/dir_y * 360 - counter
+            if abs(dir_x) < 200 and abs(dir_y) < 300:
+                ball["direction"] += (q-ball["direction"])/2
+            if abs(dir_x) < 120 and abs(dir_y) < 200:
+                ball["direction"] = q
         ball["direction"] += counter
         change = 15/(1+math.e**(0.05*score))+1
         if ball["direction"] < -100:
@@ -287,8 +375,10 @@ def update_ball(balls):
             sound.play()
             if ball["abnormal"]:
                 score += 3
+                internal_score += 3
             else:
                 score += 1
+                internal_score += 1
             reset_ball(ball)
         if ball["x"] < 0 or ball["x"] > SCREEN_WIDTH:
             ball["direction"] *= -1
@@ -348,10 +438,11 @@ def reset_ball(ball):
     ball["x"] = random.randint(0, SCREEN_WIDTH - BALL_RADIUS)
     ball["y"] = 0
     ball["speed"] += 0.2
-    ball["speed"] = min(10/(1+math.e**(-0.05*score)), ball["speed"])
+    ball["speed"] = min(10/(1+math.e**(-0.05*internal_score)), ball["speed"])
     if random.randint(0,100) < 5:
         ball["speed"] = 5
     ball["abnormal"] = False
+    ball["direction"] = min(100, max(-100, ball["direction"]))
     if len(balls) < 5:
         if random.randint(0, 50) < (10-len(balls)):
             new_ball = {
@@ -373,9 +464,12 @@ code = []
 index = 0
 def main():
     global score
+    global internal_score
     global counter
     global BREAK_TIMING
     global BREAK_EVENT
+    global DECREASE_STUN
+    global MAGNETIC_CATCH
     global BREAK_X
     global BREAK_WIDTH
     global BROKEN
@@ -386,13 +480,21 @@ def main():
     global index
     global rick_frame_count
     global stats
+    global bullet_cd
     global stun_count
     global FRAME_COUNTER
+    global bonus_score
+    global boss_dir
+    global accel
+    global curr_heat
     menu_running = True
     options_running = False
     help_running = False
     running = False
     stats_running = False
+    card = False
+    boss = False
+    positions = [(SCREEN_WIDTH//2-250, SCREEN_HEIGHT//2), (SCREEN_WIDTH//2, SCREEN_HEIGHT//2), (SCREEN_WIDTH//2+250, SCREEN_HEIGHT//2)]
     global volume
     with open("statistics.txt", "r") as f:
         lines = f.readlines()
@@ -456,7 +558,8 @@ def main():
                         options_running = False
                         menu_running = True
                     elif event.key == pygame.K_q:
-                        head_pose.change_webcam()
+                        if not minimal:
+                            head_pose.change_webcam()
         if help_running:
             draw_help_menu()
             for event in pygame.event.get():
@@ -469,6 +572,14 @@ def main():
                         help_running = False
                         menu_running = True
         if running:
+            if internal_score > 150:
+                internal_score = 0
+                boss = True
+                running = False
+                pygame.mixer.music.stop()
+                pygame.mixer.music.load("boss.mp3")
+                pygame.mixer.music.play(-1)
+                continue
             FRAME_COUNTER+=1
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -484,7 +595,7 @@ def main():
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_f:
                         global USE_FACE
-                        USE_FACE = not USE_FACE
+                        USE_FACE = (not USE_FACE) and (not minimal)
                     if event.key == CODE[index]:
                         code.append(event.key)
                         index += 1
@@ -492,6 +603,7 @@ def main():
                             index = 0
                             print('Bingo!')
                             score = 1000
+                            internal_score = 10000
                             stats["secret"] = "1"
                     else:
                         code = []
@@ -512,7 +624,12 @@ def main():
             if not any(keys):
                 speed += decel * -((speed > 0) * 2 - 1)
             move_basket(keys)
+            prev_score = score
             update_ball(balls)
+            if prev_score != score:
+                curr_heat += curr_heat * 0.25 * (score-prev_score)*4
+            decay_rate = curr_heat * (math.e**(curr_heat/40) -0.5)/100
+            curr_heat = max(1, curr_heat - decay_rate)
             basket.move_ip(speed, 0)
             if basket.left < 0 or basket.right > SCREEN_WIDTH:
                 speed = 0
@@ -531,28 +648,31 @@ def main():
                     counter += 0.3
             BREAK_TIMING -=1
             BROKEN_TIMING -=1
+            if BREAK_TIMING == 0:
+                BREAK_EVENT = False
+                BREAK_TIMING = -1
+                pygame.draw.rect(screen, RED, (BREAK_X, 0, BREAK_WIDTH, SCREEN_HEIGHT))
+                if basket.colliderect(pygame.Rect(BREAK_X, 0, BREAK_WIDTH, SCREEN_HEIGHT)):
+                    BROKEN = True
+                    stun_count += 1
+                    BROKEN_TIMING = FPS*random.randint(3,8)
+            if BROKEN_TIMING == 0:
+                BROKEN = False
+                BROKEN_TIMING = -1
             if rick_frame_count < 0:
-                if random.randint(0,10000) <score  and (not BREAK_EVENT) and (BROKEN_TIMING < FPS/2):
+                if random.randint(0,10000) <internal_score  and (not BREAK_EVENT) and (BROKEN_TIMING < FPS/2):
                     BREAK_EVENT = True
                     BREAK_TIMING =FPS*random.randint(1,5)
+                    BREAK_TIMING -= BREAK_TIMING * DECREASE_STUN
                     BREAK_X = random.randint(0, SCREEN_WIDTH - 100)
-                    BREAK_WIDTH = random.randint(min(50+score,150), min(100 + score,600))
+                    BREAK_WIDTH = random.randint(min(50+internal_score,150), min(100 + internal_score,600))
                 if BREAK_EVENT and BREAK_TIMING > FPS/2:
                     pygame.draw.rect(screen, DARK_GRAY, (BREAK_X, 0, BREAK_WIDTH, SCREEN_HEIGHT), 2)
                 if BREAK_EVENT and BREAK_TIMING <= FPS/2:
                     pygame.draw.rect(screen, RED, (BREAK_X, 0, BREAK_WIDTH, SCREEN_HEIGHT), 2)
-                if BREAK_TIMING == 0:
-                    BREAK_EVENT = False
-                    BREAK_TIMING = -1
-                    pygame.draw.rect(screen, RED, (BREAK_X, 0, BREAK_WIDTH, SCREEN_HEIGHT))
-                    if basket.colliderect(pygame.Rect(BREAK_X, 0, BREAK_WIDTH, SCREEN_HEIGHT)):
-                        BROKEN = True
-                        stun_count += 1
-                        BROKEN_TIMING = FPS*random.randint(3,8)
-                if BROKEN_TIMING == 0:
-                    BROKEN = False
-                    BROKEN_TIMING = -1
-                if random.randint(1,100000) < score and power_field == None:
+                
+                
+                if random.randint(1,100000) < internal_score and power_field == None:
                     power_type = random.randint(0,3)
                     power_field = pygame.Rect(random.randint(0, SCREEN_WIDTH - 10), random.randint(0,SCREEN_HEIGHT-200), 100, 50)
 
@@ -560,6 +680,101 @@ def main():
                     power_field= None
             pygame.display.flip()
             clock.tick(FPS)
+        if boss:
+            screen.fill(WHITE)
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    boss = False
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_m:
+                        boss = False
+                        menu_running = True
+                        pygame.mixer.music.stop()
+                        pygame.mixer.music.load("menu.mp3")
+                        pygame.mixer.music.play(-1)
+                        update_stats()
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_SPACE]:
+                if bullet_cd < 0:
+                    bullets.append(bullet(basket.centerx, basket.centery, 3, speed))
+                    bullet_cd = 3
+                    bonus_score -= 1
+                bullet_cd -=1
+            move_basket(keys)
+            basket.move_ip(speed, 0)
+            if not any(keys):
+                speed += decel * -((speed > 0) * 2 - 1)
+            if abs(speed) < 0.1:
+                speed = 0
+            draw_rotated_rect(screen, BLUE, basket.center, (BASKET_WIDTH, BASKET_HEIGHT), speed)
+            global turret_dir
+            global boss_health
+            if boss_health > 0:
+                for b in bullets:
+                    b.update()
+                    pygame.draw.circle(screen, RED, (int(b.x), int(b.y)), 3)
+                    if boss_enem.colliderect(pygame.Rect(b.x, b.y, 3, 3)):
+                        boss_health -= 1
+                        bullets.remove(b)
+                if boss_enem.top < 100:
+                    boss_enem.top += 2
+                    help_text = font.render("PRESS SPACE TO SHOOT", True, BLACK)
+                    screen.blit(help_text, (SCREEN_WIDTH // 2 - help_text.get_width() // 2, SCREEN_HEIGHT // 2 - help_text.get_height() // 2))
+                else:
+                    boss_enem.left += boss_dir
+                    if boss_enem.left < 0 or boss_enem.right > SCREEN_WIDTH:
+                        boss_dir *= -1
+                pygame.draw.rect(screen, RED, boss_enem)
+                boss_healthbar = boss_enem.copy()
+                boss_healthbar.scale_by_ip(1- boss_health/100, 0.8)
+                pygame.draw.rect(screen, WHITE, boss_healthbar)
+            else:
+                for i in positions:
+                    screen.blit(back_card, i)
+                card = True
+            if card:
+                #check if click
+                for i in range(len(positions)):
+                    if pygame.mouse.get_pressed()[0] and pygame.Rect(positions[i][0], positions[i][1], back_card.get_width(), back_card.get_height()).collidepoint(pygame.mouse.get_pos()):
+                        boss = False
+                        running = True
+                        pygame.mixer.music.stop()
+                        pygame.mixer.music.load("game.mp3")
+                        pygame.mixer.music.play(-1)
+                        powe = random.choice([0,1,2,3])
+                        score+=bonus_score
+                        internal_score = 0
+                        if powe == 0:
+                            MAGNETIC_CATCH = True
+                            powerop_list.append("Magnetic Catch")
+                        elif powe == 1:
+                            DECREASE_STUN+=0.1
+                            powerop_list.append(f"Decrease Stun ({DECREASE_STUN})")
+                        elif powe == 2:
+                            accel += 0.1
+                            decel += 0.1
+                            if "Increase Speed" in powerop_list:
+                                powerop_list.remove("Increase Speed")
+                                powerop_list.append("Increase Speed II")
+                            elif "Increase Speed II" in powerop_list:
+                                powerop_list.remove("Increase Speed II")
+                                powerop_list.append("Super Speed")
+                            else:
+                                powerop_list.append("Increase Speed")
+                        elif powe == 3:
+                            accel += 0.2
+                            decel += 0.2
+                            if "Super Speed" in powerop_list:
+                                powerop_list.remove("Super Speed")
+                                powerop_list.append("Hyper Speed")
+                        card = False
+                        boss_health = 100
+            pygame.display.flip()
+            print(powerop_list)
+            clock.tick(FPS*4 if card else FPS)
+        print(score,internal_score)
 pygame.init()
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -573,14 +788,26 @@ ball = {
     "direction" : random.randint(-100,100),
     "abnormal": False
 }
+bullets = []
 balls = [ball]
-head_pose = HeadPoseDetector()
+boss_dir = 4
+turret_dir = 0
+bonus_score = 150
+TURRET_LENGTH = 40
+basket_dir = 0
+bullet_cd = -1
+boss_health = 100
+boss_enem = pygame.Rect(SCREEN_WIDTH // 2 - BASKET_WIDTH // 2, 0, BASKET_WIDTH, BASKET_HEIGHT)
+if not minimal:
+    head_pose = HeadPoseDetector()
 power_field = None
+back_card = pygame.image.load("cards/backend.png")
 power_type = None
 # 0: speed up
 # 1: teleport
 # 2: duplicate
 score = 0
+internal_score = 0
 stun_count = 0
 
 font = pygame.font.SysFont('arial', 24)
