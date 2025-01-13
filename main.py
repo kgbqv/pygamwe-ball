@@ -494,7 +494,6 @@ def main():
     stats_running = False
     card = False
     boss = False
-    positions = [(SCREEN_WIDTH//2-250, SCREEN_HEIGHT//2), (SCREEN_WIDTH//2, SCREEN_HEIGHT//2), (SCREEN_WIDTH//2+250, SCREEN_HEIGHT//2)]
     global volume
     with open("statistics.txt", "r") as f:
         lines = f.readlines()
@@ -731,26 +730,24 @@ def main():
                 boss_healthbar.scale_by_ip(1- boss_health/100, 0.8)
                 pygame.draw.rect(screen, WHITE, boss_healthbar)
             else:
-                for i in positions:
-                    screen.blit(back_card, i)
+                powe = random.randint(0,3)
+                screen.blit(pygame.transform.scale(pygame.image.load("cards/backend.png"), (220,360)), (SCREEN_WIDTH//2-110, SCREEN_HEIGHT//2-180))
                 card = True
             if card:
-                #check if click
-                for i in range(len(positions)):
-                    if pygame.mouse.get_pressed()[0] and pygame.Rect(positions[i][0], positions[i][1], back_card.get_width(), back_card.get_height()).collidepoint(pygame.mouse.get_pos()):
+                if True:
+                    if pygame.mouse.get_pressed()[0] and pygame.Rect(SCREEN_WIDTH//2-110, SCREEN_HEIGHT//2-180, 220, 360).collidepoint(pygame.mouse.get_pos()):
                         boss = False
                         running = True
                         pygame.mixer.music.stop()
                         pygame.mixer.music.load("game.mp3")
                         pygame.mixer.music.play(-1)
-                        powe = random.choice([0,1,2,3])
                         score+=bonus_score
                         internal_score = 0
                         if powe == 0:
                             MAGNETIC_CATCH = True
                             powerop_list.append("Magnetic Catch")
                         elif powe == 1:
-                            DECREASE_STUN+=0.1
+                            DECREASE_STUN+=0.2
                             powerop_list.append(f"Decrease Stun ({DECREASE_STUN})")
                         elif powe == 2:
                             accel += 0.1
@@ -771,6 +768,25 @@ def main():
                                 powerop_list.append("Hyper Speed")
                         card = False
                         boss_health = 100
+                        #render front side for half a second
+                        front = None
+                        if powe == 0:
+                            front = pygame.image.load("cards/magnet.png")
+                        elif powe == 1:
+                            front = pygame.image.load("cards/decreasestun.png")
+                        elif powe == 2:
+                            front = pygame.image.load("cards/increasespeed.png")
+                        elif powe == 3:
+                            front = pygame.image.load("cards/hyperspeed.png")
+                        screen.blit(pygame.transform.scale(front, (220,360)), (SCREEN_WIDTH//2-110, SCREEN_HEIGHT//2-180))
+                        pygame.display.flip()
+                        #wait until player click outside
+                        while not (pygame.mouse.get_pressed()[0] and not pygame.Rect(SCREEN_WIDTH//2-110, SCREEN_HEIGHT//2-180, 220, 360).collidepoint(pygame.mouse.get_pos())):
+                            for event in pygame.event.get():
+                                if event.type == pygame.QUIT:
+                                    boss = False
+                                    pygame.quit()
+                                    sys.exit()
             pygame.display.flip()
             print(powerop_list)
             clock.tick(FPS*4 if card else FPS)
@@ -796,7 +812,7 @@ bonus_score = 150
 TURRET_LENGTH = 40
 basket_dir = 0
 bullet_cd = -1
-boss_health = 100
+boss_health = 1
 boss_enem = pygame.Rect(SCREEN_WIDTH // 2 - BASKET_WIDTH // 2, 0, BASKET_WIDTH, BASKET_HEIGHT)
 if not minimal:
     head_pose = HeadPoseDetector()
@@ -806,8 +822,8 @@ power_type = None
 # 0: speed up
 # 1: teleport
 # 2: duplicate
-score = 0
-internal_score = 0
+score = 149
+internal_score = 149
 stun_count = 0
 
 font = pygame.font.SysFont('arial', 24)

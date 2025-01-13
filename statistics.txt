@@ -1,6 +1,6 @@
-last_score 0
-high_score 0
-hist_score []
-total_score 0
-stun_count 0
+last_score 339
+high_score 339
+hist_score [294, 305, 295, 293, 339]
+total_score 1526
+stun_count 6
 secret 0
