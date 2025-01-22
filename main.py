@@ -4,6 +4,7 @@ import sys
 import os
 import math
 import pygame.gfxdraw
+from test_render import RadialMenu
 
 import time
 import random
@@ -110,21 +111,9 @@ def draw_main_menu():
     screen.fill(WHITE)
     title_font = pygame.font.SysFont('arial', 40)
     option_font = pygame.font.SysFont('arial', 30)
-
-    title_text = title_font.render("Main Menu", True, BLACK)
-    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 100))
-
-    start_text = option_font.render("1. Start Game", True, BLACK)
-    options_text = option_font.render("2. Options", True, BLACK)
-    help_text = option_font.render("3. Help", True, BLACK)
-    stat_text = option_font.render("4. Statistics", True, BLACK)
-    quit_text = option_font.render("5. Quit", True, BLACK)
-
-    screen.blit(start_text, (SCREEN_WIDTH // 2 - start_text.get_width() // 2, 200))
-    screen.blit(options_text, (SCREEN_WIDTH // 2 - options_text.get_width() // 2, 250))
-    screen.blit(help_text, (SCREEN_WIDTH // 2 - help_text.get_width() // 2, 300))
-    screen.blit(stat_text, (SCREEN_WIDTH // 2 - stat_text.get_width() // 2, 350))
-    screen.blit(quit_text, (SCREEN_WIDTH // 2 - quit_text.get_width() // 2, 400))
+    img = pygame.image.load("mainbg.png")
+    screen.blit(img, (0,0))
+    main_radbar.render(screen)
 
     pygame.display.flip()
 def update_stats():
@@ -463,6 +452,11 @@ def reset_ball(ball):
 code = []
 index = 0
 def main():
+    global tip1_act
+    global tip2_act
+    global tip3_act
+    global tip4_act
+    global tip5_act
     global score
     global internal_score
     global counter
@@ -501,6 +495,11 @@ def main():
     while True:
         if menu_running:
             draw_main_menu()
+            if not tip1_act:
+                tip = font.render(tip1, True, WHITE)
+                pygame.draw.rect(screen, BLACK, (SCREEN_WIDTH - tip.get_width() - 10, SCREEN_HEIGHT - tip.get_height() - 10, tip.get_width(), tip.get_height()))
+                screen.blit(tip, (SCREEN_WIDTH - tip.get_width() - 10, SCREEN_HEIGHT - tip.get_height() - 10))
+                pygame.display.flip()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     menu_running = False
@@ -508,25 +507,31 @@ def main():
                     pygame.quit()
                     sys.exit()
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_1:
-                        running = True
-                        menu_running = False
-                        pygame.mixer.music.stop()
-                        pygame.mixer.music.load("game.mp3")
-                        pygame.mixer.music.play(-1)
-                    elif event.key == pygame.K_2:
-                        options_running = True
-                        menu_running = False
-                    elif event.key == pygame.K_3:
-                        help_running = True
-                        menu_running = False
-                    elif event.key == pygame.K_5:
-                        menu_running = False
-                        pygame.quit()
-                        sys.exit()
-                    elif event.key == pygame.K_4:
-                        stats_running = True
-                        menu_running = False
+                    if event.key == pygame.K_LEFT or event.key == pygame.K_RIGHT or event.key == pygame.K_RETURN:
+                        tip1_act = True
+                    if event.key==pygame.K_RETURN:
+                        if main_radbar.get_index() == 0:
+                            running = True
+                            menu_running = False
+                            pygame.mixer.music.stop()
+                            pygame.mixer.music.load("game.mp3")
+                            pygame.mixer.music.play(-1)
+                        elif main_radbar.get_index() == 1:
+                            options_running = True
+                            menu_running = False
+                        elif main_radbar.get_index() == 2:
+                            help_running = True
+                            menu_running = False
+                        elif main_radbar.get_index() == 4:
+                            menu_running = False
+                            pygame.quit()
+                            sys.exit()
+                        elif main_radbar.get_index() == 3:
+                            stats_running = True
+                            menu_running = False
+                    else:
+                        main_radbar.update(event.key)
+            clock.tick(FPS*4)
         if stats_running:
             draw_stats_menu()
             for event in pygame.event.get():
@@ -580,6 +585,11 @@ def main():
                 pygame.mixer.music.play(-1)
                 continue
             FRAME_COUNTER+=1
+            if not tip2_act:
+                tip = font.render(tip2, True, WHITE)
+                pygame.draw.rect(screen, BLACK, (SCREEN_WIDTH - tip.get_width() - 10, SCREEN_HEIGHT - tip.get_height() - 10, tip.get_width(), tip.get_height()))
+                screen.blit(tip, (SCREEN_WIDTH - tip.get_width() - 10, SCREEN_HEIGHT - tip.get_height() - 10))
+                pygame.display.flip()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -615,6 +625,8 @@ def main():
                         pygame.mixer.music.play(-1)
                         update_stats()
             keys = pygame.key.get_pressed()
+            if keys[pygame.K_LEFT] or keys[pygame.K_RIGHT]:
+                tip2_act = True
             if score == 100 and rick_frame_count == -1:
                 rick_frame_count = 1
                 score+=1
@@ -825,6 +837,14 @@ power_type = None
 score = 149
 internal_score = 149
 stun_count = 0
+
+main_radbar = RadialMenu((0, SCREEN_HEIGHT//2), 200, ["Start Game", "Options", "Help", "Statistics", "Quit"], pygame.font.SysFont('arial', 40))
+tip1= "Tip: Use the arrow keys to select an option, and press Enter to confirm."
+tip2 = "Use the arrow keys to move the basket sideways"
+tip3 = "Catch the balls to score points"
+tip4 = "Avoid the beams, they stun you"
+tip5 = "Power zones spawn randomly"
+tip1_act, tip2_act, tip3_act, tip4_act, tip5_act = False, False, False, False, False
 
 font = pygame.font.SysFont('arial', 24)
 
