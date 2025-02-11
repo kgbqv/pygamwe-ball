@@ -1,6 +1,6 @@
-last_score 294
+last_score 98
 high_score 344
-hist_score [294, 305, 295, 293, 339, 149, 344, 0, 302, 149, 149, 149, 149, 149, 294]
-total_score 3360
-stun_count 9
+hist_score [294, 305, 295, 293, 339, 149, 344, 0, 302, 149, 149, 149, 149, 149, 294, 297, 0, 149, 149, 51, 93, 3, 98]
+total_score 4200
+stun_count 13
 secret 0

@@ -17,6 +17,8 @@ class RadialMenu:
             end_angle = self.current_angle + (i + 1) * segment_angle
             #pygame.draw.arc(screen, SEGMENT_COLOR, (self.center[0] - self.radius, self.center[1] - self.radius, self.radius * 2, self.radius * 2), math.radians(start_angle), math.radians(end_angle), 2)
             self.draw_text_at_angle(screen, item, self.center, self.radius, start_angle, self.font, TEXT_COLOR)
+            #draw shadow
+            self.draw_text_at_angle(screen, item, (self.center[0] + 3, self.center[1] + 3), self.radius, start_angle, self.font, (255,255,255))
         pygame.draw.circle(screen, CENTER_COLOR, self.center, CENTER_RADIUS)
         diff = self.get_angle_difference(self.current_angle, self.target_angle)
         if diff != 0:
@@ -54,7 +56,6 @@ class RadialMenu:
         diff = (target - current + 180) % 360 - 180
         return diff if diff != -180 else 180
 
-# Usage example:
 pygame.init()
 WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))

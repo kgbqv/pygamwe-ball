@@ -240,7 +240,19 @@ def draw_screen(balls):
     global speed
     global rick_frame_count
     global curr_heat
-    screen.fill(WHITE)
+    if score < 20:
+        #load background
+        screen.fill(WHITE)
+        img = pygame.image.load("bavkgrounds/1.png")
+        screen.blit(img, (0,0))
+    elif score < 50:
+        screen.fill(WHITE)
+        img = pygame.image.load("bavkgrounds/2.png")
+        screen.blit(img, (0,0))
+    else:
+        screen.fill(WHITE)
+        img = pygame.image.load("bavkgrounds/3.png")
+        screen.blit(img, (0,0))
     global font
     basket_dir = speed
     if BROKEN:
@@ -478,6 +490,7 @@ def main():
     global stun_count
     global FRAME_COUNTER
     global bonus_score
+    global boss_health
     global boss_dir
     global accel
     global curr_heat
@@ -576,9 +589,9 @@ def main():
                         help_running = False
                         menu_running = True
         if running:
-            if internal_score > 150:
-                internal_score = 0
+            if score == 10 or score == 20 or score == 50 or score == 100:
                 boss = True
+                boss_health = score
                 running = False
                 pygame.mixer.music.stop()
                 pygame.mixer.music.load("boss.mp3")
@@ -710,8 +723,7 @@ def main():
             if keys[pygame.K_SPACE]:
                 if bullet_cd < 0:
                     bullets.append(bullet(basket.centerx, basket.centery, 3, speed))
-                    bullet_cd = 3
-                    bonus_score -= 1
+                    bullet_cd = 10
                 bullet_cd -=1
             move_basket(keys)
             basket.move_ip(speed, 0)
@@ -721,7 +733,6 @@ def main():
                 speed = 0
             draw_rotated_rect(screen, BLUE, basket.center, (BASKET_WIDTH, BASKET_HEIGHT), speed)
             global turret_dir
-            global boss_health
             if boss_health > 0:
                 for b in bullets:
                     b.update()
@@ -739,7 +750,7 @@ def main():
                         boss_dir *= -1
                 pygame.draw.rect(screen, RED, boss_enem)
                 boss_healthbar = boss_enem.copy()
-                boss_healthbar.scale_by_ip(1- boss_health/100, 0.8)
+                boss_healthbar.scale_by_ip(1- boss_health/score, 0.8)
                 pygame.draw.rect(screen, WHITE, boss_healthbar)
             else:
                 powe = random.randint(0,3)
@@ -750,11 +761,10 @@ def main():
                     if pygame.mouse.get_pressed()[0] and pygame.Rect(SCREEN_WIDTH//2-110, SCREEN_HEIGHT//2-180, 220, 360).collidepoint(pygame.mouse.get_pos()):
                         boss = False
                         running = True
+                        score+=1
                         pygame.mixer.music.stop()
                         pygame.mixer.music.load("game.mp3")
                         pygame.mixer.music.play(-1)
-                        score+=bonus_score
-                        internal_score = 0
                         if powe == 0:
                             MAGNETIC_CATCH = True
                             powerop_list.append("Magnetic Catch")
@@ -779,7 +789,6 @@ def main():
                                 powerop_list.remove("Super Speed")
                                 powerop_list.append("Hyper Speed")
                         card = False
-                        boss_health = 100
                         #render front side for half a second
                         front = None
                         if powe == 0:
@@ -802,7 +811,6 @@ def main():
             pygame.display.flip()
             print(powerop_list)
             clock.tick(FPS*4 if card else FPS)
-        print(score,internal_score)
 pygame.init()
 clock = pygame.time.Clock()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
@@ -820,7 +828,6 @@ bullets = []
 balls = [ball]
 boss_dir = 4
 turret_dir = 0
-bonus_score = 150
 TURRET_LENGTH = 40
 basket_dir = 0
 bullet_cd = -1
@@ -834,8 +841,7 @@ power_type = None
 # 0: speed up
 # 1: teleport
 # 2: duplicate
-score = 149
-internal_score = 149
+score = 0
 stun_count = 0
 
 main_radbar = RadialMenu((0, SCREEN_HEIGHT//2), 200, ["Start Game", "Options", "Help", "Statistics", "Quit"], pygame.font.SysFont('arial', 40))
