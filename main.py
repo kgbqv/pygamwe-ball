@@ -1,3 +1,4 @@
+minimal = False
 import pygame
 import random
 import sys
@@ -104,7 +105,6 @@ BROKEN_TIMING = -1
 BREAK_X = 0
 BREAK_WIDTH = 0
 FRAME_COUNTER = 0
-minimal = False
 stats = {}
 speed = 0
 accel = 0.6
@@ -579,6 +579,7 @@ def main():
     global BREAK_WIDTH
     global BROKEN
     global BROKEN_TIMING
+    global USE_FACE
     global power_field
     global power_type
     global code
