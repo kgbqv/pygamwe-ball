@@ -19,7 +19,7 @@ This is a catch-the-ball project with a lot of features, built using pygame.
 
 ## Installation
 
-1. **Clone the repository**:
+1. **Clone the repository**: (skip if you're using local)
    ```sh
    git clone https://github.com/kgbqv/pygame-ball.git
    cd pygame-ball
