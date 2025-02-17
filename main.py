@@ -140,7 +140,7 @@ font3 = pygame.font.SysFont('arial', 30)
 skins_available = ["blue", "green", "yellow", "purple"]
 skins_color = [BLUE, GREEN, YELLOW, (128, 0, 128)]
 skin = 0
-skin_selector = RadialMenu((0, SCREEN_HEIGHT // 2), 200, skins_available + ["back to main menu"], font3)
+skin_selector = RadialMenu((0, SCREEN_HEIGHT // 2), 200, skins_available + ["back to main menu"], font3,False)
 def draw_skin_shop():
     global skin
     screen.fill(WHITE)

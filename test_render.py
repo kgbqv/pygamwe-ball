@@ -2,13 +2,14 @@ import pygame
 import math
 
 class RadialMenu:
-    def __init__(self, center, radius, items, font):
+    def __init__(self, center, radius, items, font, centerd=True):
         self.center = center
         self.radius = radius
         self.items = items
         self.font = font
         self.current_angle = 0
         self.target_angle = 0
+        self.centerd = centerd
 
     def render(self, screen):
         segment_angle = 360 / len(self.items)
@@ -19,7 +20,8 @@ class RadialMenu:
             self.draw_text_at_angle(screen, item, self.center, self.radius, start_angle, self.font, TEXT_COLOR)
             #draw shadow
             self.draw_text_at_angle(screen, item, (self.center[0] + 3, self.center[1] + 3), self.radius, start_angle, self.font, (255,255,255))
-        pygame.draw.circle(screen, CENTER_COLOR, self.center, CENTER_RADIUS)
+        if self.centerd:
+            pygame.draw.circle(screen, CENTER_COLOR, self.center, CENTER_RADIUS)
         diff = self.get_angle_difference(self.current_angle, self.target_angle)
         if diff != 0:
             self.current_angle += ANIMATION_SPEED if diff > 0 else -ANIMATION_SPEED
