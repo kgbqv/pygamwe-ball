@@ -19,6 +19,14 @@ def preprop_img():
         img.save(f"tmp/bavkgrounds/{i}.png")
     img = Image.open("bavkgrounds/3.png")
     img.save("tmp/bavkgrounds/3.png")
+    img=Image.open("main.png")
+    img = img.filter(ImageFilter.GaussianBlur(2))
+    img = img.point(lambda p: p * 0.9)
+    img.save("mainbg.png")
+    img=Image.open("main.png")
+    img = img.filter(ImageFilter.GaussianBlur(5))
+    img = img.point(lambda p: p * 0.5)
+    img.save("shop.png")
 
 preprop_img()
 previous_time = time.time()
@@ -119,7 +127,31 @@ class bullet:
     def update(self):
         self.x += self.speed * math.sin(math.radians(self.direction))
         self.y -= self.speed * math.cos(math.radians(self.direction))
+font3 = pygame.font.SysFont('arial', 30)
+skins_available = ["blue", "green", "yellow", "purple"]
+skins_color = [BLUE, GREEN, YELLOW, (128, 0, 128)]
+skin = 0
+skin_selector = RadialMenu((0, SCREEN_HEIGHT // 2), 200, skins_available + ["back to main menu"], font3)
+def draw_skin_shop():
+    global skin
+    screen.fill(WHITE)
+    title_font = pygame.font.SysFont('arial', 40)
+    option_font = pygame.font.SysFont('arial', 30)
 
+    title_text = title_font.render("Skin Shop", True, BLACK)
+    screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
+
+    img=pygame.image.load("shop.png")
+    screen.blit(img, (0,0))
+
+    skin_text = option_font.render(f"Current Skin: {skins_available[skin]}", True, BLACK)
+    screen.blit(skin_text, (SCREEN_WIDTH // 2 - skin_text.get_width() // 2, 100))
+    skin_selector.render(screen)
+
+    #render basket with  skin
+    draw_rotated_rect(screen, skins_color[skin], (SCREEN_WIDTH//4*3, SCREEN_HEIGHT//2), (BASKET_WIDTH, BASKET_HEIGHT), 0)
+
+    pygame.display.flip()
 def draw_main_menu():
     screen.fill(WHITE)
     title_font = pygame.font.SysFont('arial', 40)
@@ -274,7 +306,7 @@ def draw_screen(balls):
     if BROKEN:
         draw_rotated_rect(screen, RED, basket.center, (BASKET_WIDTH, BASKET_HEIGHT), basket_dir)
     else:
-        draw_rotated_rect(screen, BLUE, basket.center, (BASKET_WIDTH, BASKET_HEIGHT), basket_dir)
+        draw_rotated_rect(screen, skins_color[skin], basket.center, (BASKET_WIDTH, BASKET_HEIGHT), basket_dir)
     if currstage != 3:
         for ball in balls:
             pygame.draw.circle(screen, RED, (ball["x"], ball["y"]), BALL_RADIUS)
@@ -510,6 +542,7 @@ def main():
     global currstage
     global tip1_act
     global tip2_act
+    global skin
     global tip3_act
     global tip4_act
     global tip5_act
@@ -546,6 +579,7 @@ def main():
     help_running = False
     running = False
     stats_running = False
+    shop_running = False
     card = False
     boss = False
     global volume
@@ -576,20 +610,41 @@ def main():
                             pygame.mixer.music.load("game.mp3")
                             pygame.mixer.music.play(-1)
                         elif main_radbar.get_index() == 1:
-                            options_running = True
+                            shop_running = True
                             menu_running = False
                         elif main_radbar.get_index() == 2:
+                            options_running = True
+                            menu_running = False
+                        elif main_radbar.get_index() == 3:
                             help_running = True
                             menu_running = False
-                        elif main_radbar.get_index() == 4:
+                        elif main_radbar.get_index() == 5:
                             menu_running = False
                             pygame.quit()
                             sys.exit()
-                        elif main_radbar.get_index() == 3:
+                        elif main_radbar.get_index() == 4:
                             stats_running = True
                             menu_running = False
                     else:
                         main_radbar.update(event.key)
+            clock.tick(FPS*4)
+        if shop_running:
+            draw_skin_shop()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    shop_running = False
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        if skin_selector.get_index() == 4:
+                            shop_running = False
+                            menu_running = True
+                        else:
+                            skin = skin_selector.get_index()
+                            print(skin)
+                    else:
+                        skin_selector.update(event.key)
             clock.tick(FPS*4)
         if stats_running:
             draw_stats_menu()
@@ -699,7 +754,7 @@ def main():
                         speed += decel * -((speed > 0) * 2 - 1)
                     if currstage == 2:
                         speed += decel * -((speed > 0) * 2 - 1) * 2
-                dec_factor = score//10
+                dec_factor = min(score//10,1)
                 if currstage == 2:
                     accel = accel/dec_factor
                 move_basket(keys)
@@ -907,7 +962,7 @@ power_type = None
 score = 0
 stun_count = 0
 
-main_radbar = RadialMenu((0, SCREEN_HEIGHT//2), 200, ["Start Game", "Options", "Help", "Statistics", "Quit"], pygame.font.SysFont('arial', 40))
+main_radbar = RadialMenu((0, SCREEN_HEIGHT//2), 200, ["Start Game", "Shop", "Options", "Help", "Statistics", "Quit"], pygame.font.SysFont('arial', 40))
 tip1= "Tip: Use the arrow keys to select an option, and press Enter to confirm."
 tip2 = "Use the arrow keys to move the basket sideways"
 tip3 = "Catch the balls to score points"
