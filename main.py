@@ -8,8 +8,19 @@ from test_render import RadialMenu
 
 import time
 import random
+from PIL import Image, ImageFilter
 
+def preprop_img():
+    for i in range(1, 3):
+        img = Image.open(f"bavkgrounds/{i}.png")
+        img = img.filter(ImageFilter.GaussianBlur(2))
+        img = img.point(lambda p: p * 0.7)
+        #create a new image file
+        img.save(f"tmp/bavkgrounds/{i}.png")
+    img = Image.open("bavkgrounds/3.png")
+    img.save("tmp/bavkgrounds/3.png")
 
+preprop_img()
 previous_time = time.time()
 internal_score = 0
 def get_rank(curr_heat):
@@ -38,6 +49,7 @@ def track_fps():
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
+currstage = 1
 CODE = [pygame.K_UP, pygame.K_UP, pygame.K_DOWN, pygame.K_DOWN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_b, pygame.K_a]
 def draw_rotated_rect(surface, color, center, size, angle):
     half_width, half_height = size[0] / 2, size[1] / 2
@@ -80,6 +92,7 @@ stats = {}
 speed = 0
 accel = 0.6
 decel = 0.5
+speed2=0
 counter = 0
 powerop_list = []
 volume = 0
@@ -236,22 +249,25 @@ def draw_help_menu():
     pygame.display.flip()
 
 def draw_screen(balls):
+    global currstage
     global counter
     global speed
     global rick_frame_count
     global curr_heat
+    global BLACK
+    global WHITE
     if score < 20:
         #load background
         screen.fill(WHITE)
-        img = pygame.image.load("bavkgrounds/1.png")
+        img = pygame.image.load("tmp/bavkgrounds/1.png")
         screen.blit(img, (0,0))
     elif score < 50:
         screen.fill(WHITE)
-        img = pygame.image.load("bavkgrounds/2.png")
+        img = pygame.image.load("tmp/bavkgrounds/2.png")
         screen.blit(img, (0,0))
     else:
         screen.fill(WHITE)
-        img = pygame.image.load("bavkgrounds/3.png")
+        img = pygame.image.load("tmp/bavkgrounds/3.png")
         screen.blit(img, (0,0))
     global font
     basket_dir = speed
@@ -259,8 +275,22 @@ def draw_screen(balls):
         draw_rotated_rect(screen, RED, basket.center, (BASKET_WIDTH, BASKET_HEIGHT), basket_dir)
     else:
         draw_rotated_rect(screen, BLUE, basket.center, (BASKET_WIDTH, BASKET_HEIGHT), basket_dir)
-    for ball in balls:
-        pygame.draw.circle(screen, RED, (ball["x"], ball["y"]), BALL_RADIUS)
+    if currstage != 3:
+        for ball in balls:
+            pygame.draw.circle(screen, RED, (ball["x"], ball["y"]), BALL_RADIUS)
+    else:
+        WHITE, BLACK = BLACK, WHITE
+        #simulate flashlight
+        if not BROKEN:
+            for ball in balls:
+                dist = math.sqrt((ball["x"] - basket.centerx)**2 + (ball["y"] - basket.centery)**2)
+                if dist < 200:
+                    pygame.draw.circle(screen, RED, (ball["x"], ball["y"]), BALL_RADIUS)
+            #also draw a light beam, partially transparent
+            s = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
+            s.set_alpha(128)
+            pygame.draw.circle(s, WHITE, basket.center, 200)
+            screen.blit(s, (0,0))
     score_text = font.render(f"Điểm: {score}", True, BLACK)
     screen.blit(score_text, (10, 10))
     pygame.draw.rect(screen, GRAY, button_rect)
@@ -321,8 +351,21 @@ def draw_screen(balls):
 
 def move_basket(keys):
     global speed
+    global speed2
     global accel
     global prev_result
+    global currstage
+    if currstage == 3:
+        if keys[pygame.K_UP]:
+            speed2 -= accel
+        if keys[pygame.K_DOWN]:
+            speed2 += accel
+        if basket.top <= 0:
+            speed2 = max(0, speed2)
+            basket.top = 0
+        if basket.bottom >= SCREEN_HEIGHT:
+            speed2 = min(0, speed2)
+            basket.bottom = SCREEN_HEIGHT
     if not USE_FACE or minimal:
         if not (BROKEN or random.randint(0,100) < 5):
             if keys[pygame.K_LEFT] and basket.left > 0:
@@ -378,8 +421,8 @@ def update_ball(balls):
                 score += 3
                 internal_score += 3
             else:
-                score += 1
-                internal_score += 1
+                score += 5
+                internal_score += 5
             reset_ball(ball)
         if ball["x"] < 0 or ball["x"] > SCREEN_WIDTH:
             ball["direction"] *= -1
@@ -464,6 +507,7 @@ def reset_ball(ball):
 code = []
 index = 0
 def main():
+    global currstage
     global tip1_act
     global tip2_act
     global tip3_act
@@ -493,7 +537,10 @@ def main():
     global boss_health
     global boss_dir
     global accel
+    global decel
     global curr_heat
+    global speed
+    global speed2
     menu_running = True
     options_running = False
     help_running = False
@@ -512,7 +559,6 @@ def main():
                 tip = font.render(tip1, True, WHITE)
                 pygame.draw.rect(screen, BLACK, (SCREEN_WIDTH - tip.get_width() - 10, SCREEN_HEIGHT - tip.get_height() - 10, tip.get_width(), tip.get_height()))
                 screen.blit(tip, (SCREEN_WIDTH - tip.get_width() - 10, SCREEN_HEIGHT - tip.get_height() - 10))
-                pygame.display.flip()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     menu_running = False
@@ -589,6 +635,10 @@ def main():
                         help_running = False
                         menu_running = True
         if running:
+            if score >= 20:
+                currstage = 2
+            if score >= 50:
+                currstage = 3
             if score == 10 or score == 20 or score == 50 or score == 100:
                 boss = True
                 boss_health = score
@@ -602,7 +652,6 @@ def main():
                 tip = font.render(tip2, True, WHITE)
                 pygame.draw.rect(screen, BLACK, (SCREEN_WIDTH - tip.get_width() - 10, SCREEN_HEIGHT - tip.get_height() - 10, tip.get_width(), tip.get_height()))
                 screen.blit(tip, (SCREEN_WIDTH - tip.get_width() - 10, SCREEN_HEIGHT - tip.get_height() - 10))
-                pygame.display.flip()
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -643,23 +692,35 @@ def main():
             if score == 100 and rick_frame_count == -1:
                 rick_frame_count = 1
                 score+=1
-            global speed
-            global decel
-            if not any(keys):
-                speed += decel * -((speed > 0) * 2 - 1)
-            move_basket(keys)
             prev_score = score
-            update_ball(balls)
-            if prev_score != score:
-                curr_heat += curr_heat * 0.25 * (score-prev_score)*4
+            if currstage == 1 or currstage == 2:
+                if not any(keys):
+                    if currstage == 1:
+                        speed += decel * -((speed > 0) * 2 - 1)
+                    if currstage == 2:
+                        speed += decel * -((speed > 0) * 2 - 1) * 2
+                dec_factor = score//10
+                if currstage == 2:
+                    accel = accel/dec_factor
+                move_basket(keys)
+                if currstage == 2:
+                    accel = accel*dec_factor
+                update_ball(balls)
+                basket.move_ip(speed, 0)
+            if currstage == 3:
+                if not any(keys):
+                    speed += decel * -((speed > 0) * 2 - 1)
+                    speed2 += decel * -((speed2 > 0) * 2 - 1)
+                accel = accel*0.4
+                decel = 0.2
+                move_basket(keys)
+                accel = accel/0.4
+                update_ball(balls)
+                basket.move_ip(speed, speed2)
+            draw_screen(balls)
+            curr_heat += curr_heat * 0.25 * (score-prev_score)*4
             decay_rate = curr_heat * (math.e**(curr_heat/40) -0.5)/100
             curr_heat = max(1, curr_heat - decay_rate)
-            basket.move_ip(speed, 0)
-            if basket.left < 0 or basket.right > SCREEN_WIDTH:
-                speed = 0
-                basket.left = max(0, basket.left)
-                basket.right = min(SCREEN_WIDTH, basket.right)
-            draw_screen(balls)
             if FRAME_COUNTER % 5 == 0:
                 counter += random.randint(-1,1)/2
                 if counter > 10:
@@ -705,6 +766,7 @@ def main():
             pygame.display.flip()
             clock.tick(FPS)
         if boss:
+            USE_FACE = False
             screen.fill(WHITE)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -720,17 +782,16 @@ def main():
                         pygame.mixer.music.play(-1)
                         update_stats()
             keys = pygame.key.get_pressed()
+            if not any(keys):
+                speed += decel * -((speed > 0) * 2 - 1)
+            move_basket(keys)
+            update_ball(balls)
             if keys[pygame.K_SPACE]:
                 if bullet_cd < 0:
                     bullets.append(bullet(basket.centerx, basket.centery, 3, speed))
                     bullet_cd = 10
                 bullet_cd -=1
-            move_basket(keys)
             basket.move_ip(speed, 0)
-            if not any(keys):
-                speed += decel * -((speed > 0) * 2 - 1)
-            if abs(speed) < 0.1:
-                speed = 0
             draw_rotated_rect(screen, BLUE, basket.center, (BASKET_WIDTH, BASKET_HEIGHT), speed)
             global turret_dir
             if boss_health > 0:
@@ -738,7 +799,7 @@ def main():
                     b.update()
                     pygame.draw.circle(screen, RED, (int(b.x), int(b.y)), 3)
                     if boss_enem.colliderect(pygame.Rect(b.x, b.y, 3, 3)):
-                        boss_health -= 1
+                        boss_health -= 10
                         bullets.remove(b)
                 if boss_enem.top < 100:
                     boss_enem.top += 2
@@ -756,6 +817,7 @@ def main():
                 powe = random.randint(0,3)
                 screen.blit(pygame.transform.scale(pygame.image.load("cards/backend.png"), (220,360)), (SCREEN_WIDTH//2-110, SCREEN_HEIGHT//2-180))
                 card = True
+
             if card:
                 if True:
                     if pygame.mouse.get_pressed()[0] and pygame.Rect(SCREEN_WIDTH//2-110, SCREEN_HEIGHT//2-180, 220, 360).collidepoint(pygame.mouse.get_pos()):
@@ -788,6 +850,8 @@ def main():
                             if "Super Speed" in powerop_list:
                                 powerop_list.remove("Super Speed")
                                 powerop_list.append("Hyper Speed")
+                            else:
+                                powerop_list.append("Super Speed")
                         card = False
                         #render front side for half a second
                         front = None
@@ -809,7 +873,6 @@ def main():
                                     pygame.quit()
                                     sys.exit()
             pygame.display.flip()
-            print(powerop_list)
             clock.tick(FPS*4 if card else FPS)
 pygame.init()
 clock = pygame.time.Clock()
