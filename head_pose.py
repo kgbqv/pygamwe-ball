@@ -1,9 +1,20 @@
 import numpy as np
 import cv2
 import dlib
+import os
+import sys
+def resource_path(relative_path):
+    try:
+    # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
 
 class HeadPoseDetector:
-    def __init__(self, webcam_instance=0, shape_predictor_path='shape_predictor_68_face_landmarks.dat'):
+    
+    def __init__(self, webcam_instance=0, shape_predictor_path=resource_path("assets/shape_predictor_68_face_landmarks.dat")):
         self.cap = cv2.VideoCapture(webcam_instance)
         self.instance = webcam_instance
         self.detector = dlib.get_frontal_face_detector()

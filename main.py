@@ -10,23 +10,32 @@ import time
 import random
 from PIL import Image, ImageFilter
 
+def resource_path(relative_path):
+    try:
+    # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 def preprop_img():
     for i in range(1, 3):
-        img = Image.open(f"bavkgrounds/{i}.png")
+        img = Image.open(resource_path(f"assets/bavkgrounds/{i}.png"))
         img = img.filter(ImageFilter.GaussianBlur(2))
         img = img.point(lambda p: p * 0.7)
         #create a new image file
-        img.save(f"tmp/bavkgrounds/{i}.png")
-    img = Image.open("bavkgrounds/3.png")
-    img.save("tmp/bavkgrounds/3.png")
-    img=Image.open("main.png")
+        img.save(resource_path(f"assets/tmp/bavkgrounds/{i}.png"))
+    img = Image.open(resource_path("assets/bavkgrounds/3.png"))
+    img.save(resource_path("assets/tmp/bavkgrounds/3.png"))
+    img=Image.open(resource_path("assets/main.png"))
     img = img.filter(ImageFilter.GaussianBlur(2))
     img = img.point(lambda p: p * 0.9)
-    img.save("mainbg.png")
-    img=Image.open("main.png")
+    img.save(resource_path("assets/mainbg.png"))
+    img=Image.open(resource_path("assets/main.png"))
     img = img.filter(ImageFilter.GaussianBlur(5))
     img = img.point(lambda p: p * 0.5)
-    img.save("shop.png")
+    img.save(resource_path("assets/shop.png"))
 
 preprop_img()
 previous_time = time.time()
@@ -111,9 +120,9 @@ pygame.mixer.pre_init(44100, -16, 2, 2048)
 pygame.mixer.init()
 pygame.mixer.quit()
 pygame.mixer.init()
-pygame.mixer.music.load("menu.mp3")
+pygame.mixer.music.load(resource_path("assets/game.mp3"))
 pygame.mixer.music.play(-1)
-sound_files = [f"effect/eff-{i:02d}.wav" for i in range(1, 7)]
+sound_files = [resource_path(f"assets/effect/eff-{i:02d}.wav") for i in range(1, 7)]
 sounds = [pygame.mixer.Sound(file) for file in sound_files]
 curr_heat = 40
 if not minimal:
@@ -141,7 +150,7 @@ def draw_skin_shop():
     title_text = title_font.render("Skin Shop", True, BLACK)
     screen.blit(title_text, (SCREEN_WIDTH // 2 - title_text.get_width() // 2, 50))
 
-    img=pygame.image.load("shop.png")
+    img=pygame.image.load(resource_path("assets/shop.png"))
     screen.blit(img, (0,0))
 
     skin_text = option_font.render(f"Current Skin: {skins_available[skin]}", True, BLACK)
@@ -156,7 +165,7 @@ def draw_main_menu():
     screen.fill(WHITE)
     title_font = pygame.font.SysFont('arial', 40)
     option_font = pygame.font.SysFont('arial', 30)
-    img = pygame.image.load("mainbg.png")
+    img = pygame.image.load(resource_path("assets/mainbg.png"))
     screen.blit(img, (0,0))
     main_radbar.render(screen)
 
@@ -171,7 +180,7 @@ def update_stats():
     stats["stun_count"] = str(int(stats.get("stun_count", "0")) + stun_count)
     stats["hist_score"] = str(eval(stats.get("hist_score", "[]")) + [score])
 
-    with open("statistics.txt", "w") as f:
+    with open(resource_path("assets/statistics.txt"), "w") as f:
         for key, value in stats.items():
             f.write(f"{key} {value}\n")
     score = 0
@@ -179,6 +188,11 @@ def update_stats():
 def draw_stats_menu():
     global stats
     screen.fill(WHITE)
+    img = pygame.image.load(resource_path("assets/mainbg.png"))
+    screen.blit(img, (0,0))
+    #draw a rectangle for the title
+    fn = pygame.Rect(SCREEN_WIDTH//2 - 350, 50, 700, SCREEN_HEIGHT-100)
+    pygame.draw.rect(screen, (255, 255, 255), fn)
     title_font = pygame.font.SysFont('arial', 40)
     option_font = pygame.font.SysFont('arial', 30)
 
@@ -216,6 +230,10 @@ def draw_stats_menu():
     pygame.display.flip()
 def draw_options_menu():
     screen.fill(WHITE)
+    img = pygame.image.load(resource_path("assets/mainbg.png"))
+    screen.blit(img, (0,0))
+    rect = pygame.Rect(SCREEN_WIDTH//2 - 350, 50, 700, SCREEN_HEIGHT - 100)
+    pygame.draw.rect(screen, (255, 255, 255), rect)
     title_font = pygame.font.SysFont('arial', 40)
     option_font = pygame.font.SysFont('arial', 30)
 
@@ -250,6 +268,10 @@ def draw_options_menu():
     pygame.display.flip()
 def draw_help_menu():
     screen.fill(WHITE)
+    img = pygame.image.load(resource_path("assets/mainbg.png"))
+    screen.blit(img, (0,0))
+    rect = pygame.Rect(SCREEN_WIDTH//2 - 350, 50, 700, SCREEN_HEIGHT)
+    pygame.draw.rect(screen, (255, 255, 255), rect)
     title_font = pygame.font.SysFont('arial', 40)
     option_font = pygame.font.SysFont('arial', 30)
 
@@ -291,15 +313,15 @@ def draw_screen(balls):
     if score < 20:
         #load background
         screen.fill(WHITE)
-        img = pygame.image.load("tmp/bavkgrounds/1.png")
+        img = pygame.image.load(resource_path("assets/tmp/bavkgrounds/1.png"))
         screen.blit(img, (0,0))
     elif score < 50:
         screen.fill(WHITE)
-        img = pygame.image.load("tmp/bavkgrounds/2.png")
+        img = pygame.image.load(resource_path("assets/tmp/bavkgrounds/2.png"))
         screen.blit(img, (0,0))
     else:
         screen.fill(WHITE)
-        img = pygame.image.load("tmp/bavkgrounds/3.png")
+        img = pygame.image.load(resource_path("assets/tmp/bavkgrounds/3.png"))
         screen.blit(img, (0,0))
     global font
     basket_dir = speed
@@ -362,7 +384,7 @@ def draw_screen(balls):
     screen.blit(fps_text, (10, SCREEN_HEIGHT - 30))
     if rick_frame_count > -1 and not minimal:
         screen.fill(BLACK)
-        rick_frame = pygame.image.load(f"FRAMES/converted/ffmpeg_{rick_frame_count}.png")
+        rick_frame = pygame.image.load(resource_path(f"assets/FRAMES/converted/ffmpeg_{rick_frame_count}.png"))
         rick_frame = pygame.transform.scale(rick_frame, (SCREEN_WIDTH, SCREEN_HEIGHT/1.5))
         screen.blit(rick_frame, (0,0+SCREEN_HEIGHT/6))
         rick_frame_count += 1
@@ -453,8 +475,8 @@ def update_ball(balls):
                 score += 3
                 internal_score += 3
             else:
-                score += 5
-                internal_score += 5
+                score += 1
+                internal_score += 1
             reset_ball(ball)
         if ball["x"] < 0 or ball["x"] > SCREEN_WIDTH:
             ball["direction"] *= -1
@@ -583,7 +605,7 @@ def main():
     card = False
     boss = False
     global volume
-    with open("statistics.txt", "r") as f:
+    with open(resource_path("assets/statistics.txt"), "r") as f:
         lines = f.readlines()
         stats = {line.split()[0]: ' '.join(line.split()[1:]) for line in lines}
     while True:
@@ -607,7 +629,7 @@ def main():
                             running = True
                             menu_running = False
                             pygame.mixer.music.stop()
-                            pygame.mixer.music.load("game.mp3")
+                            pygame.mixer.music.load(resource_path("assets/game.mp3"))
                             pygame.mixer.music.play(-1)
                         elif main_radbar.get_index() == 1:
                             shop_running = True
@@ -699,7 +721,7 @@ def main():
                 boss_health = score
                 running = False
                 pygame.mixer.music.stop()
-                pygame.mixer.music.load("boss.mp3")
+                pygame.mixer.music.load(resource_path("assets/boss.mp3"))
                 pygame.mixer.music.play(-1)
                 continue
             FRAME_COUNTER+=1
@@ -738,7 +760,7 @@ def main():
                         running = False
                         menu_running = True
                         pygame.mixer.music.stop()
-                        pygame.mixer.music.load("menu.mp3")
+                        pygame.mixer.music.load(resource_path("assets/menu.mp3"))
                         pygame.mixer.music.play(-1)
                         update_stats()
             keys = pygame.key.get_pressed()
@@ -833,7 +855,7 @@ def main():
                         boss = False
                         menu_running = True
                         pygame.mixer.music.stop()
-                        pygame.mixer.music.load("menu.mp3")
+                        pygame.mixer.music.load(resource_path("assets/menu.mp3"))
                         pygame.mixer.music.play(-1)
                         update_stats()
             keys = pygame.key.get_pressed()
@@ -870,7 +892,7 @@ def main():
                 pygame.draw.rect(screen, WHITE, boss_healthbar)
             else:
                 powe = random.randint(0,3)
-                screen.blit(pygame.transform.scale(pygame.image.load("cards/backend.png"), (220,360)), (SCREEN_WIDTH//2-110, SCREEN_HEIGHT//2-180))
+                screen.blit(pygame.transform.scale(pygame.image.load(resource_path("assets/cards/backend.png")), (220,360)), (SCREEN_WIDTH//2-110, SCREEN_HEIGHT//2-180))
                 card = True
 
             if card:
@@ -880,7 +902,7 @@ def main():
                         running = True
                         score+=1
                         pygame.mixer.music.stop()
-                        pygame.mixer.music.load("game.mp3")
+                        pygame.mixer.music.load(resource_path("assets/game.mp3"))
                         pygame.mixer.music.play(-1)
                         if powe == 0:
                             MAGNETIC_CATCH = True
@@ -911,13 +933,13 @@ def main():
                         #render front side for half a second
                         front = None
                         if powe == 0:
-                            front = pygame.image.load("cards/magnet.png")
+                            front = pygame.image.load(resource_path("assets/cards/magnet.png"))
                         elif powe == 1:
-                            front = pygame.image.load("cards/decreasestun.png")
+                            front = pygame.image.load(resource_path("assets/cards/decreasestun.png"))
                         elif powe == 2:
-                            front = pygame.image.load("cards/increasespeed.png")
+                            front = pygame.image.load(resource_path("assets/cards/increasespeed.png"))
                         elif powe == 3:
-                            front = pygame.image.load("cards/hyperspeed.png")
+                            front = pygame.image.load(resource_path("assets/cards/hyperspeed.png"))
                         screen.blit(pygame.transform.scale(front, (220,360)), (SCREEN_WIDTH//2-110, SCREEN_HEIGHT//2-180))
                         pygame.display.flip()
                         #wait until player click outside
@@ -954,7 +976,7 @@ boss_enem = pygame.Rect(SCREEN_WIDTH // 2 - BASKET_WIDTH // 2, 0, BASKET_WIDTH, 
 if not minimal:
     head_pose = HeadPoseDetector()
 power_field = None
-back_card = pygame.image.load("cards/backend.png")
+back_card = pygame.image.load(resource_path("assets/cards/backend.png"))
 power_type = None
 # 0: speed up
 # 1: teleport
